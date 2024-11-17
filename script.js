@@ -94,51 +94,25 @@ const subtitleText = "DevOps and Platform Engineering";
 
 function typeWriter(element, text, speed = 150, delay = 3000) {
     let i = 0;
-    element.style.opacity = 0;
-    
-    // Create a wrapper span for the entire text
-    const wrapper = document.createElement('span');
-    wrapper.className = 'text-wrapper';
-    element.appendChild(wrapper);
-    
-    fadeIn(element, () => {
-        wrapper.innerHTML = '';
-        type();
-    });
+    element.style.opacity = 1;
+    element.innerHTML = '';
     
     function type() {
         if (i < text.length) {
-            const char = text.charAt(i);
-            const span = document.createElement('span');
-            
-            // Handle spaces specially
-            if (char === ' ') {
-                span.innerHTML = '&nbsp;';
-                span.className = 'space';
-            } else {
-                span.textContent = char;
-            }
-            
-            span.style.opacity = '0';
-            wrapper.appendChild(span);
-            
-            requestAnimationFrame(() => {
-                span.style.transition = 'opacity 0.3s ease';
-                span.style.opacity = '1';
-            });
-            
+            element.innerHTML += text.charAt(i);
             i++;
             setTimeout(type, speed);
         } else {
             setTimeout(() => {
                 fadeOut(element, () => {
                     i = 0;
-                    wrapper.innerHTML = '';
+                    element.innerHTML = '';
                     setTimeout(() => typeWriter(element, text, speed, delay), 500);
                 });
             }, delay);
         }
     }
+    type();
 }
 
 function fadeIn(element, callback) {
@@ -160,10 +134,13 @@ function fadeOut(element, callback) {
 setTimeout(() => {
     const titleElement = document.querySelector('.title');
     const subtitleElement = document.querySelector('.subtitle');
-    typeWriter(titleElement, titleText);
-    setTimeout(() => {
-        typeWriter(subtitleElement, subtitleText);
-    }, titleText.length * 100 + 500);
+    
+    if (titleElement && subtitleElement) {
+        typeWriter(titleElement, titleText);
+        setTimeout(() => {
+            typeWriter(subtitleElement, subtitleText);
+        }, titleText.length * 150 + 500);
+    }
 }, 1000); 
 
 const codeSnippets = [
@@ -458,16 +435,27 @@ function getNextCommand() {
     return command;
 }
 
-// Update createFloatingTerminal function with dynamic sizing
+// Update createFloatingTerminal function with better positioning
 function createFloatingTerminal() {
     const terminal = document.createElement('div');
     terminal.className = 'floating-terminal';
     
+    // Remove any existing terminals
+    const existingTerminals = document.querySelectorAll('.floating-terminal');
+    existingTerminals.forEach(term => term.remove());
+    
+    // Get the content area dimensions
+    const content = document.querySelector('.content');
+    const contentRect = content.getBoundingClientRect();
+    const safeZoneTop = contentRect.top;
+    const safeZoneBottom = contentRect.bottom;
+    
+    // Define positions with more space from center
     const positions = [
-        { top: '15%', left: '5%' },
-        { top: '15%', right: '5%' },
-        { bottom: '15%', left: '5%' },
-        { bottom: '15%', right: '5%' }
+        { top: '5%', left: '5%' },             // Top left
+        { top: '5%', right: '5%' },            // Top right
+        { bottom: '5%', left: '5%' },          // Bottom left
+        { bottom: '5%', right: '5%' }          // Bottom right
     ];
     
     const randomIndex = Math.floor(Math.random() * positions.length);
@@ -478,17 +466,20 @@ function createFloatingTerminal() {
     });
     
     const snippet = getNextCommand();
-
-    // Set base dimensions based on command type
-    const extraWideCommands = ['gcloud', 'aws'];
-    const wideCommands = ['kubectl', 'terraform', 'helm'];
+    
+    // Adjust dimensions based on command type
+    const extraWideCommands = ['gcloud', 'aws', 'kubectl'];
+    const wideCommands = ['terraform', 'helm'];
     
     if (extraWideCommands.includes(snippet.type)) {
-        terminal.style.minWidth = '900px';
+        terminal.style.minWidth = '1000px';
+        terminal.style.maxWidth = '1200px';
     } else if (wideCommands.includes(snippet.type)) {
-        terminal.style.minWidth = '700px';
+        terminal.style.minWidth = '800px';
+        terminal.style.maxWidth = '1000px';
     } else {
-        terminal.style.minWidth = '500px';
+        terminal.style.minWidth = '600px';
+        terminal.style.maxWidth = '800px';
     }
     
     terminal.innerHTML = `
@@ -505,24 +496,29 @@ function createFloatingTerminal() {
     
     document.body.appendChild(terminal);
     
-    // Add content and adjust size
+    // Adjust position after adding content
     setTimeout(() => {
+        const terminalRect = terminal.getBoundingClientRect();
+        
+        // Check if terminal overlaps with content area
+        if (terminalRect.bottom > safeZoneTop && terminalRect.top < safeZoneBottom) {
+            // If terminal is in top half, move it higher
+            if (terminalRect.top < window.innerHeight / 2) {
+                terminal.style.top = '2%';
+            } else {
+                // If terminal is in bottom half, move it lower
+                terminal.style.bottom = '2%';
+            }
+        }
+        
+        // Ensure terminal is fully visible
+        if (terminalRect.right > window.innerWidth) {
+            terminal.style.right = '2%';
+            terminal.style.left = 'auto';
+        }
+        
         terminal.style.opacity = '1';
         runTerminalSequence(terminal, snippet).then(() => {
-            // After content is added, adjust terminal size if needed
-            const content = terminal.querySelector('.terminal-content');
-            const contentWidth = content.scrollWidth;
-            const contentHeight = content.scrollHeight;
-            
-            // Add padding to the calculated dimensions
-            const terminalWidth = Math.min(contentWidth + 40, window.innerWidth * 0.9);
-            const terminalHeight = Math.min(contentHeight + 60, window.innerHeight * 0.8);
-            
-            // Set minimum height
-            terminal.style.height = `${Math.max(200, terminalHeight)}px`;
-            terminal.style.width = `${Math.max(parseInt(terminal.style.minWidth), terminalWidth)}px`;
-            
-            // Keep terminal visible
             setTimeout(() => {
                 terminal.style.opacity = '0';
                 setTimeout(() => terminal.remove(), 1000);
@@ -541,8 +537,7 @@ document.head.insertAdjacentHTML('beforeend', `
         .floating-terminal {
             position: fixed;
             min-height: 200px;
-            max-width: 90vw;
-            max-height: 80vh;
+            max-height: 400px;
             background: rgba(20, 20, 20, 0.95);
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
@@ -552,48 +547,6 @@ document.head.insertAdjacentHTML('beforeend', `
             transition: opacity 0.5s ease, width 0.3s ease, height 0.3s ease;
             display: flex;
             flex-direction: column;
-        }
-        
-        .terminal-header {
-            background: rgba(60, 60, 60, 0.9);
-            padding: 8px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-        
-        .terminal-content {
-            flex: 1;
-            overflow: auto;
-            padding: 20px;
-            font-size: 14px;
-            line-height: 1.6;
-            margin: 0;
-            white-space: pre;
-            font-family: 'Courier New', monospace;
-            min-height: 100px;
-        }
-        
-        .text-wrapper {
-            display: inline-block;
-            white-space: pre;
-        }
-        
-        .text-wrapper span {
-            display: inline-block;
-        }
-        
-        .text-wrapper .space {
-            width: 0.3em;
-        }
-        
-        .typing-text {
-            text-align: center;
-            margin-bottom: 4rem;
-            height: 120px;
-            white-space: pre-wrap;
         }
     </style>
 `);

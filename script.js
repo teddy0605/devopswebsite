@@ -148,18 +148,25 @@ const codeSnippets = [
         type: 'kubernetes',
         steps: [
             { 
-                command: 'kubectl get pods -n monitoring',
-                output: `NAMESPACE     NAME                        READY   STATUS    
-monitoring    prometheus-k8s-0            3/3     Running   
-monitoring    alertmanager-main-0         2/2     Running   
-monitoring    grafana-7cf9947897-k8v9d   1/1     Running`
+                command: 'kubectl get pods -n monitoring -o wide',
+                output: `NAMESPACE     NAME                        READY   STATUS    IP            NODE       AGE
+monitoring    prometheus-k8s-0            3/3     Running   10.0.12.65    worker-1   15d
+monitoring    alertmanager-main-0         2/2     Running   10.0.12.89    worker-2   15d
+monitoring    grafana-7cf9947897-k8v9d    1/1     Running   10.0.12.123   worker-1   15d`
             },
             {
-                command: 'kubectl get nodes',
-                output: `NAME           STATUS   ROLES    AGE   VERSION
-master-1      Ready    master   92d   v1.24.0
-worker-1      Ready    <none>   92d   v1.24.0
-worker-2      Ready    <none>   92d   v1.24.0`
+                command: 'kubectl describe deployment nginx-ingress -n ingress',
+                output: `Name:                   nginx-ingress-controller
+Namespace:              ingress
+CreationTimestamp:      Thu, 15 Mar 2024 09:23:45 -0700
+Labels:                 app=nginx-ingress
+                       tier=frontend
+Annotations:           deployment.kubernetes.io/revision: 3
+Selector:              app=nginx-ingress
+Replicas:              3 desired | 3 updated | 3 available | 0 unavailable
+StrategyType:          RollingUpdate
+MinReadySeconds:       0
+RollingUpdateStrategy: 25% max unavailable, 25% max surge`
             }
         ]
     },
@@ -167,151 +174,40 @@ worker-2      Ready    <none>   92d   v1.24.0`
         type: 'terraform',
         steps: [
             {
-                command: 'terraform init',
-                output: `Initializing provider plugins...
-- Finding latest version of hashicorp/aws...
-- Installing hashicorp/aws v4.15.0...
-- Installed hashicorp/aws v4.15.0`
-            },
-            {
                 command: 'terraform plan',
                 output: `Terraform will perform the following actions:
 
-  + aws_instance.web
-      ami:           "ami-0c55b159cbfafe1f0"
-      instance_type: "t2.micro"
-      tags: {
-        Name = "Production-Server"
-      }
+  # aws_eks_cluster.main will be created
+  + resource "aws_eks_cluster" "main" {
+      + arn                       = (known after apply)
+      + certificate_authority     = (known after apply)
+      + cluster_id               = (known after apply)
+      + created_at               = (known after apply)
+      + endpoint                 = (known after apply)
+      + id                       = (known after apply)
+      + identity                 = (known after apply)
+      + name                     = "production-cluster"
+      + platform_version         = (known after apply)
+      + role_arn                 = "arn:aws:iam::123456789012:role/eks-cluster-role"
+      + status                   = (known after apply)
+      + version                  = "1.27"
+
+      + vpc_config {
+          + cluster_security_group_id = (known after apply)
+          + endpoint_private_access   = true
+          + endpoint_public_access    = true
+          + public_access_cidrs      = [
+              + "10.0.0.0/8"
+            ]
+          + subnet_ids               = [
+              + "subnet-abc123def",
+              + "subnet-def456ghi"
+            ]
+          + vpc_id                   = (known after apply)
+        }
+    }
 
 Plan: 1 to add, 0 to change, 0 to destroy.`
-            }
-        ]
-    },
-    {
-        type: 'ansible',
-        steps: [
-            {
-                command: 'ansible-playbook deploy.yml -i inventory',
-                output: `PLAY [Deploy Application] ********************************
-
-TASK [Gathering Facts] *********************************
-ok: [webserver1]
-
-TASK [Install dependencies] ****************************
-changed: [webserver1]
-
-TASK [Start service] **********************************
-ok: [webserver1]
-
-PLAY RECAP *******************************************
-webserver1 : ok=3 changed=1 unreachable=0 failed=0`
-            }
-        ]
-    },
-    {
-        type: 'gcloud',
-        steps: [
-            {
-                command: 'gcloud container clusters list',
-                output: `NAME         LOCATION      STATUS  MASTER_VERSION  MASTER_IP      MACHINE_TYPE  NODE_VERSION
-prod-cluster  us-central1  RUNNING  1.24.8-gke.2  34.68.123.45  e2-standard-4 1.24.8-gke.2`
-            },
-            {
-                command: 'gcloud compute instances list',
-                output: `NAME           ZONE           MACHINE_TYPE  STATUS  INTERNAL_IP  EXTERNAL_IP
-bastion-host   us-central1-a  e2-medium     RUNNING  10.0.1.10    35.12.34.56
-jenkins-master us-central1-b  e2-standard-2 RUNNING  10.0.2.20    35.23.45.67`
-            }
-        ]
-    },
-    {
-        type: 'linux',
-        steps: [
-            {
-                command: 'df -h',
-                output: `Filesystem      Size  Used Avail Use% Mounted on
-/dev/root       100G   32G   68G  32% /
-tmpfs            16G   12M   16G   1% /dev/shm
-/dev/nvme0n1p1  500M  102M  398M  21% /boot`
-            },
-            {
-                command: 'top -b -n 1 | head -n 5',
-                output: `top - 14:23:45 up 23 days, 12:44,  1 user,  load average: 0.52, 0.58, 0.59
-Tasks: 128 total,   1 running, 127 sleeping,   0 stopped,   0 zombie
-%Cpu(s):  5.2 us,  2.1 sy,  0.0 ni, 92.5 id,  0.0 wa,  0.0 hi,  0.2 si
-MiB Mem:  32102.5 total,  24521.3 used,   7581.2 free,   1234.5 buff/cache
-MiB Swap:  2048.0 total,      0.0 used,   2048.0 free,  29234.2 avail Mem`
-            }
-        ]
-    },
-    {
-        type: 'docker',
-        steps: [
-            {
-                command: 'docker ps',
-                output: `CONTAINER ID   IMAGE                COMMAND        STATUS          PORTS
-abc123def456   nginx:latest         "/docker-..."   Up 2 hours      80/tcp
-def456abc789   redis:latest         "redis-ser..."  Up 3 days       6379/tcp
-ghi789jkl012   postgres:13          "docker-e..."   Up 5 days       5432/tcp`
-            }
-        ]
-    },
-    {
-        type: 'SQL',
-        steps: [
-            {
-                command: 'psql -U admin -d production -c "SELECT count(*) FROM users;"',
-                output: ` count  
---------
- 156742
-(1 row)`
-            },
-            {
-                command: '\\dt',
-                output: `            List of relations
- Schema |    Name    | Type  |  Owner   
---------+------------+-------+----------
- public | users      | table | postgres
- public | orders     | table | postgres
- public | inventory  | table | postgres`
-            }
-        ]
-    },
-    {
-        type: 'curl',
-        steps: [
-            {
-                command: 'curl -I https://api.example.com/health',
-                output: `HTTP/1.1 200 OK
-Date: Mon, 27 Mar 2024 14:25:31 GMT
-Content-Type: application/json
-Connection: keep-alive
-X-Rate-Limit-Limit: 60
-X-Rate-Limit-Remaining: 59`
-            }
-        ]
-    },
-    {
-        type: 'prometheus',
-        steps: [
-            {
-                command: 'curl localhost:9090/api/v1/query?query=up',
-                output: `{
-  "status": "success",
-  "data": {
-    "resultType": "vector",
-    "result": [
-      {
-        "metric": {
-          "job": "node_exporter",
-          "instance": "localhost:9100"
-        },
-        "value": [1709561731.989, "1"]
-      }
-    ]
-  }
-}`
             }
         ]
     },
@@ -319,58 +215,152 @@ X-Rate-Limit-Remaining: 59`
         type: 'helm',
         steps: [
             {
-                command: 'helm list -A',
-                output: `NAME            NAMESPACE       REVISION        STATUS          CHART
-prometheus      monitoring      2               deployed        prometheus-15.1.3
-cert-manager    cert-manager    1               deployed        cert-manager-v1.11.0
-ingress-nginx   ingress        3               deployed        ingress-nginx-4.7.1`
+                command: 'helm upgrade --install monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values.yaml --debug',
+                output: `preparing upgrade for monitoring
+performing update for release=monitoring, chart=prometheus-community/kube-prometheus-stack
+
+HOOKS:
+---
+# Source: kube-prometheus-stack/charts/kube-prometheus-stack/templates/prometheus/hooks/pre-install-patch.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: monitoring-kube-prometheus-admission-patch
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+        - name: patch
+          image: "registry.k8s.io/kubectl:v1.24.0"
+          command:
+            - kubectl
+            - patch
+COMPUTED VALUES:
+alertmanager:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts: 
+      - alertmanager.cluster.local
+grafana:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - grafana.cluster.local`
             }
         ]
     },
     {
-        type: 'git',
+        type: 'ansible',
         steps: [
             {
-                command: 'git log --oneline -n 5',
-                output: `a1b2c3d Fix deployment configuration
-e4f5g6h Update dependencies
-i7j8k9l Implement new feature
-m0n1o2p Add unit tests
-q3r4s5t Initial commit`
+                command: 'ansible-playbook site.yml --list-tasks',
+                output: `playbook: site.yml
+
+  play #1 (all): Configure Base System	TAGS: []
+    tasks:
+      common : Install required packages	TAGS: [packages]
+      common : Configure timezone	TAGS: [timezone]
+      common : Setup chrony time synchronization	TAGS: [chrony]
+      common : Enable and start chrony	TAGS: [chrony]
+      security : Configure SSH settings	TAGS: [ssh]
+      security : Setup firewall rules	TAGS: [firewall]
+      monitoring : Install node_exporter	TAGS: [monitoring]
+      monitoring : Configure prometheus targets	TAGS: [monitoring]
+
+  play #2 (webservers): Configure Web Servers	TAGS: []
+    tasks:
+      nginx : Install nginx	TAGS: [webserver]
+      nginx : Configure virtual hosts	TAGS: [webserver]
+      nginx : Setup SSL certificates	TAGS: [ssl]
+
+PLAY RECAP *********************************************************************
+webserver1                  : ok=12   changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+webserver2                  : ok=12   changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+dbserver1                   : ok=8    changed=1    unreachable=0    failed=0    skipped=4    rescued=0    ignored=0`
             }
         ]
     },
     {
-        type: 'aws',
+        type: 'kubectl-2',
         steps: [
             {
-                command: 'aws ec2 describe-instances --query "Reservations[].Instances[].{ID:InstanceId,Type:InstanceType,State:State.Name}"',
-                output: `[
-    {
-        "ID": "i-0abc123def456",
-        "Type": "t3.large",
-        "State": "running"
-    },
-    {
-        "ID": "i-0def456abc789",
-        "Type": "t3.xlarge",
-        "State": "running"
-    }
-]`
+                command: 'kubectl get events --sort-by=.metadata.creationTimestamp',
+                output: `LAST SEEN    TYPE      REASON              OBJECT                                MESSAGE
+2m           Normal    Scheduled           Pod/nginx-7cf9947897-k8v9d         Successfully assigned default/nginx to worker-1
+2m           Normal    Pulling             Pod/nginx-7cf9947897-k8v9d         Pulling image "nginx:1.21"
+1m           Normal    Pulled              Pod/nginx-7cf9947897-k8v9d         Successfully pulled image "nginx:1.21"
+1m           Normal    Created             Pod/nginx-7cf9947897-k8v9d         Created container nginx
+1m           Normal    Started             Pod/nginx-7cf9947897-k8v9d         Started container nginx`
             }
         ]
     },
     {
-        type: 'vault',
+        type: 'docker',
         steps: [
             {
-                command: 'vault secrets list',
-                output: `Path          Type         Description
-----          ----         -----------
-cubbyhole/    cubbyhole    per-token private secret storage
-secret/       kv           key-value secrets storage
-ssh/          ssh          SSH secret backend
-pki/          pki          PKI secret backend`
+                command: 'docker compose -f production.yml ps',
+                output: `NAME                    COMMAND                  SERVICE             STATUS              PORTS
+frontend-app-1          "/docker-entrypoint.…"   frontend            running (healthy)   0.0.0.0:80->80/tcp
+backend-api-1           "./api-server"           backend             running (healthy)   0.0.0.0:8080->8080/tcp
+redis-cache-1           "docker-entrypoint.s…"   redis-cache         running             6379/tcp
+postgres-db-1           "docker-entrypoint.s…"   postgres-db         running             5432/tcp`
+            }
+        ]
+    },
+    {
+        type: 'gcloud',
+        steps: [
+            {
+                command: 'gcloud container clusters describe prod-cluster --format="yaml"',
+                output: `name: prod-cluster
+location: us-central1
+nodePools:
+- name: default-pool
+  config:
+    machineType: e2-standard-4
+    diskSizeGb: 100
+    imageType: COS_CONTAINERD
+  initialNodeCount: 3
+  autoscaling:
+    enabled: true
+    minNodeCount: 3
+    maxNodeCount: 10
+networkConfig:
+  enableIntraNodeVisibility: true
+  privateIpv6GoogleAccess: DISABLED
+releaseChannel:
+  channel: REGULAR`
+            }
+        ]
+    },
+    {
+        type: 'argocd',
+        steps: [
+            {
+                command: 'argocd app list -o wide',
+                output: `NAME          CLUSTER                         NAMESPACE  PROJECT  STATUS  HEALTH   SYNCPOLICY  CONDITIONS
+frontend      https://k8s.prod.internal  prod       default  Synced  Healthy  Auto-Prune  <none>
+backend       https://k8s.prod.internal  prod       default  Synced  Healthy  Auto-Prune  <none>
+monitoring    https://k8s.prod.internal  monitor    default  Synced  Healthy  Auto       <none>
+cert-manager  https://k8s.prod.internal  security   default  Synced  Healthy  Auto       <none>`
+            }
+        ]
+    },
+    {
+        type: 'openstack',
+        steps: [
+            {
+                command: 'openstack server list --long',
+                output: `+--------------------------------------+---------------+--------+------------+-------------+------------------+------------+
+| ID                                   | Name          | Status | Task State | Power State | Networks         | Image Name |
++--------------------------------------+---------------+--------+------------+-------------+------------------+------------+
+| 8a7d6a37-e4b8-4e5c-9c2d-4fc61e294c1a| web-server-1  | ACTIVE | None       | Running     | private=10.0.0.2 | Ubuntu 20.04|
+| 9b8e7f48-f5c9-5f6d-0d3e-5gd72f305d2b| web-server-2  | ACTIVE | None       | Running     | private=10.0.0.3 | Ubuntu 20.04|
+| 0c9f8g59-g6d0-6g7e-1e4f-6he83g416e3c| db-server-1   | ACTIVE | None       | Running     | private=10.0.0.4 | Ubuntu 20.04|
++--------------------------------------+---------------+--------+------------+-------------+------------------+------------+`
             }
         ]
     }
@@ -435,27 +425,35 @@ function getNextCommand() {
     return command;
 }
 
-// Update createFloatingTerminal function with better positioning
+// Update createFloatingTerminal function with better positioning and sizing
 function createFloatingTerminal() {
     const terminal = document.createElement('div');
     terminal.className = 'floating-terminal';
     
-    // Remove any existing terminals
+    // Remove existing terminals
     const existingTerminals = document.querySelectorAll('.floating-terminal');
     existingTerminals.forEach(term => term.remove());
     
-    // Get the content area dimensions
+    // Get content dimensions for safe zones
     const content = document.querySelector('.content');
     const contentRect = content.getBoundingClientRect();
-    const safeZoneTop = contentRect.top;
-    const safeZoneBottom = contentRect.bottom;
+    const titleArea = document.querySelector('.typing-text').getBoundingClientRect();
+    const techStack = document.querySelector('.tech-stack').getBoundingClientRect();
     
-    // Define positions with more space from center
+    // Define safe zones
+    const safeZones = {
+        top: titleArea.top,
+        bottom: techStack.bottom,
+        centerStart: titleArea.top - 20,
+        centerEnd: techStack.bottom + 20
+    };
+    
+    // Define positions that avoid the center
     const positions = [
-        { top: '5%', left: '5%' },             // Top left
-        { top: '5%', right: '5%' },            // Top right
-        { bottom: '5%', left: '5%' },          // Bottom left
-        { bottom: '5%', right: '5%' }          // Bottom right
+        { top: '2%', left: '2%' },             // Top left
+        { top: '2%', right: '2%' },            // Top right
+        { bottom: '2%', left: '2%' },          // Bottom left
+        { bottom: '2%', right: '2%' }          // Bottom right
     ];
     
     const randomIndex = Math.floor(Math.random() * positions.length);
@@ -467,20 +465,25 @@ function createFloatingTerminal() {
     
     const snippet = getNextCommand();
     
-    // Adjust dimensions based on command type
-    const extraWideCommands = ['gcloud', 'aws', 'kubectl'];
-    const wideCommands = ['terraform', 'helm'];
+    // Adjust terminal size based on command content
+    const commandSizes = {
+        'kubectl': { width: 1200, height: 400 },
+        'kubectl-2': { width: 1200, height: 300 },
+        'openstack': { width: 1200, height: 300 },
+        'docker': { width: 1000, height: 250 },
+        'argocd': { width: 1100, height: 250 },
+        'terraform': { width: 1000, height: 500 },
+        'helm': { width: 1000, height: 500 },
+        'ansible': { width: 900, height: 500 },
+        'gcloud': { width: 900, height: 400 },
+        'vault': { width: 800, height: 300 }
+    };
     
-    if (extraWideCommands.includes(snippet.type)) {
-        terminal.style.minWidth = '1000px';
-        terminal.style.maxWidth = '1200px';
-    } else if (wideCommands.includes(snippet.type)) {
-        terminal.style.minWidth = '800px';
-        terminal.style.maxWidth = '1000px';
-    } else {
-        terminal.style.minWidth = '600px';
-        terminal.style.maxWidth = '800px';
-    }
+    const defaultSize = { width: 800, height: 300 };
+    const size = commandSizes[snippet.type] || defaultSize;
+    
+    terminal.style.width = `${size.width}px`;
+    terminal.style.height = `${size.height}px`;
     
     terminal.innerHTML = `
         <div class="terminal-header">
@@ -496,22 +499,24 @@ function createFloatingTerminal() {
     
     document.body.appendChild(terminal);
     
-    // Adjust position after adding content
+    // Adjust position to avoid overlapping
     setTimeout(() => {
         const terminalRect = terminal.getBoundingClientRect();
         
-        // Check if terminal overlaps with content area
-        if (terminalRect.bottom > safeZoneTop && terminalRect.top < safeZoneBottom) {
-            // If terminal is in top half, move it higher
-            if (terminalRect.top < window.innerHeight / 2) {
+        // If terminal would overlap with center content
+        if (terminalRect.bottom > safeZones.centerStart && terminalRect.top < safeZones.centerEnd) {
+            if (position.top) {
+                // If terminal is too close to title, move it higher
                 terminal.style.top = '2%';
             } else {
-                // If terminal is in bottom half, move it lower
-                terminal.style.bottom = '2%';
+                // If terminal is too close to tech stack, move it lower
+                const bottomSpace = window.innerHeight - safeZones.bottom;
+                const newBottom = Math.min(bottomSpace - terminalRect.height, window.innerHeight * 0.02);
+                terminal.style.bottom = `${Math.max(2, newBottom)}%`;
             }
         }
         
-        // Ensure terminal is fully visible
+        // Ensure terminal fits on screen horizontally
         if (terminalRect.right > window.innerWidth) {
             terminal.style.right = '2%';
             terminal.style.left = 'auto';
@@ -519,10 +524,13 @@ function createFloatingTerminal() {
         
         terminal.style.opacity = '1';
         runTerminalSequence(terminal, snippet).then(() => {
+            const longOutputCommands = ['kubectl', 'kubectl-2', 'terraform', 'helm', 'ansible'];
+            const visibilityTime = longOutputCommands.includes(snippet.type) ? 8000 : 6000;
+            
             setTimeout(() => {
                 terminal.style.opacity = '0';
                 setTimeout(() => terminal.remove(), 1000);
-            }, 4000);
+            }, visibilityTime);
         });
     }, 100);
 }
@@ -536,17 +544,27 @@ document.head.insertAdjacentHTML('beforeend', `
     <style>
         .floating-terminal {
             position: fixed;
-            min-height: 200px;
-            max-height: 400px;
             background: rgba(20, 20, 20, 0.95);
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
             font-family: 'Courier New', monospace;
             z-index: 3;
             opacity: 0;
-            transition: opacity 0.5s ease, width 0.3s ease, height 0.3s ease;
+            transition: opacity 0.5s ease;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .terminal-content {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+            white-space: pre;
+            font-family: 'Courier New', monospace;
         }
     </style>
 `);

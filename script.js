@@ -95,12 +95,14 @@ const subtitleText = "DevOps and Platform Engineering";
 function typeWriter(element, text, speed = 150, delay = 3000) {
     let i = 0;
     element.style.opacity = 0;
-    element.innerHTML = text;
     
-    // Fade in the entire text first
+    // Create a wrapper span for the entire text
+    const wrapper = document.createElement('span');
+    wrapper.className = 'text-wrapper';
+    element.appendChild(wrapper);
+    
     fadeIn(element, () => {
-        // Then start the typing effect
-        element.innerHTML = '';
+        wrapper.innerHTML = '';
         type();
     });
     
@@ -108,11 +110,18 @@ function typeWriter(element, text, speed = 150, delay = 3000) {
         if (i < text.length) {
             const char = text.charAt(i);
             const span = document.createElement('span');
-            span.textContent = char;
-            span.style.opacity = '0';
-            element.appendChild(span);
             
-            // Fade in each letter
+            // Handle spaces specially
+            if (char === ' ') {
+                span.innerHTML = '&nbsp;';
+                span.className = 'space';
+            } else {
+                span.textContent = char;
+            }
+            
+            span.style.opacity = '0';
+            wrapper.appendChild(span);
+            
             requestAnimationFrame(() => {
                 span.style.transition = 'opacity 0.3s ease';
                 span.style.opacity = '1';
@@ -124,7 +133,7 @@ function typeWriter(element, text, speed = 150, delay = 3000) {
             setTimeout(() => {
                 fadeOut(element, () => {
                     i = 0;
-                    element.innerHTML = '';
+                    wrapper.innerHTML = '';
                     setTimeout(() => typeWriter(element, text, speed, delay), 500);
                 });
             }, delay);
@@ -565,6 +574,26 @@ document.head.insertAdjacentHTML('beforeend', `
             white-space: pre;
             font-family: 'Courier New', monospace;
             min-height: 100px;
+        }
+        
+        .text-wrapper {
+            display: inline-block;
+            white-space: pre;
+        }
+        
+        .text-wrapper span {
+            display: inline-block;
+        }
+        
+        .text-wrapper .space {
+            width: 0.3em;
+        }
+        
+        .typing-text {
+            text-align: center;
+            margin-bottom: 4rem;
+            height: 120px;
+            white-space: pre-wrap;
         }
     </style>
 `);
